@@ -241,7 +241,7 @@
     if (!settings.keys) settings.keys = { github: '', gistId: '' };
 
     // ================= GitHub Gist 安全云端同步 =================
-    const GIST_FILENAME = 'my_ai_chats_backup.json';
+    const GIST_FILENAME = 'ai_work_backup.json';
 
     async function loadFromServer() {
         const token = settings.keys.github;
@@ -351,7 +351,12 @@
 
     function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
 
-    function saveSettings() {
+ function saveSettings() {
+        // 关键修复：如果浏览器读取的是旧版数据（没有 keys 结构），在这里强制初始化一下，防止崩溃
+        if (!settings.keys) {
+            settings.keys = { github: '', gistId: '' };
+        }
+
         settings.provider = document.getElementById('provider-select').value;
         settings.url = document.getElementById('custom-url').value;
         settings.key = document.getElementById('api-key').value;
@@ -365,9 +370,15 @@
         localStorage.setItem('my_ai_settings', JSON.stringify(settings));
         closeSettings();
         
-        // 如果填入了 GitHub 密钥，自动触发一次云端同步尝试
+        // 当填入密钥后，立刻从云端拉取数据（防止把本地的空数据传上去覆盖云端）
         if (settings.keys.github && settings.keys.gistId) {
-            saveToServer();
+            const listDiv = document.getElementById('chat-list');
+            listDiv.innerHTML = '<div style="padding:10px; text-align:center; color:#888; font-size:12px;">正在拉取云端数据...</div>';
+            
+            loadFromServer().then(() => {
+                renderChatList();
+                renderMessages();
+            });
         }
     }
 
